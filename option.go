@@ -18,6 +18,17 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
+// WithRoutesLog enables logging of every registered route when [App.Start]
+// is called. By default, App.Start is silent so that production runs don't
+// emit a flood of route-list lines through the configured logger. Pass
+// WithRoutesLog() during development (or whenever you want the route table
+// printed on startup).
+func WithRoutesLog() Option {
+	return func(app *App) {
+		app.routesLog = true
+	}
+}
+
 // WithMux sets the http.ServeMux for the App. If not set, it will use http.DefaultServeMux.
 func WithMux(mux *http.ServeMux) Option {
 	return func(app *App) {

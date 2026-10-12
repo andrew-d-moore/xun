@@ -1041,6 +1041,43 @@ func TestMux(t *testing.T) {
 	})
 }
 
+func TestRoutesLogDefault(t *testing.T) {
+	mux := http.NewServeMux()
+	w := bytes.NewBuffer(nil)
+	logger := slog.New(slog.NewTextHandler(w, nil))
+
+	app := New(WithMux(mux), WithLogger(logger))
+	defer app.Close()
+
+	app.Get("/a", func(c *Context) error { return nil })
+	app.Post("/b", func(c *Context) error { return nil })
+
+	app.Start()
+
+	// Route logging is disabled by default, so nothing should have been
+	// written even though routes are registered.
+	require.Empty(t, w.String())
+}
+
+func TestWithRoutesLog(t *testing.T) {
+	mux := http.NewServeMux()
+	w := bytes.NewBuffer(nil)
+	logger := slog.New(slog.NewTextHandler(w, nil))
+
+	app := New(WithMux(mux), WithLogger(logger), WithRoutesLog())
+	defer app.Close()
+
+	app.Get("/a", func(c *Context) error { return nil })
+	app.Post("/b", func(c *Context) error { return nil })
+
+	app.Start()
+
+	out := w.String()
+	// With WithRoutesLog, both routes are logged on startup.
+	require.Contains(t, out, "GET /a")
+	require.Contains(t, out, "POST /b")
+}
+
 func TestAppRoutes_Snapshot(t *testing.T) {
 	mux := http.NewServeMux()
 	app := New(WithMux(mux))

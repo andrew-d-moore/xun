@@ -40,6 +40,7 @@ type App struct {
 	handlerViewers []Viewer
 	engines        []ViewEngine
 	logger         *slog.Logger
+	routesLog      bool
 	fsys           fs.FS
 	watch          bool
 	watcher        *fsnotify.Watcher
@@ -135,22 +136,27 @@ func (app *App) Group(prefix string) Router {
 	}
 }
 
-// Start initializes and starts the application by locking the mutex,
-// iterating through the routes, and logging the pattern and viewers
-// for each route. It ensures thread safety by using a mutex lock.
+// Start locks the App mutex and, when [WithRoutesLog] was passed to [New],
+// logs the pattern and viewers of every registered route. It is a no-op
+// otherwise — App does not own an HTTP server, so there is nothing to
+// "start"; see [App.Mux] for the mux the caller runs.
+//
+// Route logging is disabled by default; enable it by passing
+// [WithRoutesLog] when constructing the App.
 func (app *App) Start() {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	for _, r := range app.routes {
-		keys := make([]string, 0, len(r.Viewers))
-		for _, v := range r.Viewers {
-			keys = append(keys, v.MimeType().String())
+	if app.routesLog {
+		for _, r := range app.routes {
+			keys := make([]string, 0, len(r.Viewers))
+			for _, v := range r.Viewers {
+				keys = append(keys, v.MimeType().String())
+			}
+
+			app.logger.Info(r.Pattern, slog.String("viewer", strings.Join(keys, ",")))
 		}
-
-		app.logger.Info(r.Pattern, slog.String("viewer", strings.Join(keys, ",")))
 	}
-
 }
 
 // Close releases the resources the App itself owns. Concretely, it stops the
